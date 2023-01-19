@@ -10,7 +10,7 @@ from django.core.mail import EmailMessage
 
 class EmailThread(threading.Thread):
 
-    def __int__(self, email):
+    def __init__(self, email):
         self.email = email
         threading.Thread.__init__(self)
 

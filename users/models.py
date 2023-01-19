@@ -15,8 +15,8 @@ ORDINARY_USER, MANAGER, SUPER_ADMIN = (
 )
 VIA_EMAIL, VIA_PHONE, VIA_USERNAME = (
     "via_email",
-    "manager",
-    "super_admin"
+    "via_phone",
+    "via_username"
 )
 
 MALE, FEMALE = (
@@ -42,7 +42,7 @@ class UserConfirmation(models.Model):
         (VIA_EMAIL, VIA_EMAIL)
     )
     code = models.CharField(max_length=4)
-    user = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    user = models.ForeignKey('users.User', models.CASCADE, 'verify_codes')
     verify_type = models.CharField(max_length=31, choices=TYPE_CHOICES)
     expiration_time = models.DateTimeField(null=True)
     is_confirmed = models.BooleanField(default=False)
@@ -114,6 +114,7 @@ class User(AbstractUser, BaseModel):
         refresh = RefreshToken.for_user(self)
         return {
             "access": str(refresh.access_token),
+            "refresh": str(refresh)
         }
 
 

@@ -9,7 +9,7 @@ from users.models import User, UserConfirmation, VIA_EMAIL, VIA_PHONE
 class SignUpSerializer(serializers.ModelSerializer):
     guid = serializers.UUIDField(read_only=True)
 
-    def __int__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(SignUpSerializer, self).__init__(*args, **kwargs)
         self.fields['email_phone_number'] = serializers.CharField(required=False)
 
@@ -26,7 +26,7 @@ class SignUpSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        user =super(SignUpSerializer, self).create(validated_data)
+        user = super(SignUpSerializer, self).create(validated_data)
         if user.auth_type == VIA_EMAIL:
             code = user.create_verify_code(user.auth_type)
             send_email(user.email, code)
@@ -35,6 +35,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             send_email(user.email, code)
             # send_phone_notification(user.phone_number, code)
         user.save()
+        return user
 
     def validate(self, attrs):
         super(SignUpSerializer, self).validate(attrs)
