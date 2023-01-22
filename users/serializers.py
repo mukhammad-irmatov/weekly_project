@@ -27,9 +27,12 @@ class SignUpSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = super(SignUpSerializer, self).create(validated_data)
+        print(user)
         if user.auth_type == VIA_EMAIL:
             code = user.create_verify_code(user.auth_type)
+            print(code)
             send_email(user.email, code)
+            print("email sending..")
         elif user.auth_type == VIA_PHONE:
             code = user.create_verify_code(user.auth_type)
             send_email(user.email, code)
@@ -44,8 +47,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def auth_validate(attrs):
-        print(attrs)
-        user_input = str(attrs.get('email_phone_number'))
+        user_input = str(attrs.get('email_phone_number')).lower()
         print(user_input)
         input_type = check_email_or_phone(user_input)
         if input_type == "email":
