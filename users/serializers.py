@@ -1,9 +1,14 @@
+from abc import ABC
+
+import generics as generics
+from django.contrib.auth.password_validation import validate_password
+from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from demo_project.utility import check_email_or_phone
 from shared.utils import phone_parser, send_email, send_phone_notification
-from users.models import User, UserConfirmation, VIA_EMAIL, VIA_PHONE
+from users.models import User, UserConfirmation, VIA_EMAIL, VIA_PHONE, CODE_VERIFIED, DONE, NEW
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -75,9 +80,15 @@ class SignUpSerializer(serializers.ModelSerializer):
         # data.update(password=attrs.get('password'))
         return data
 
-    def validate_email_phone_number(self, value): # value = "abdusamad123@gamil.com"
+    def validate_email_phone_number(self, value): # value = "samandar@gmail.com"
         value = value.lower()
-        print(value)
+        query = (Q(phone_number=value) | Q(email=value)) & (
+            Q(auth_status=NEW) | Q(auth_status=CODE_VERIFIED)
+        )
+        print(query)
+        if User.objects.filter(query).exists():
+            print('topildi')
+            User.objects.get(query).delete()
 
         if value and User.objects.filter(email=value).exists():
             data = {
@@ -103,3 +114,60 @@ class SignUpSerializer(serializers.ModelSerializer):
         return data
 
 
+class ChangeUserInformationSerializer(serializers.Serializer):
+    bio = serializers.CharField(write_only=True, required=True)
+    sex = serializers.CharField(write_only=True, required=True)
+    first_name = serializers.CharField(write_only=True, required=True)
+    username = serializers.CharField(write_only=True, required=True)
+    password = serializers.CharField(write_only=True, required=True)
+    confirm_password = serializers.CharField(write_only=True, required=True)
+
+    def validate_bio(self, bio):
+        if bio and len(bio) > 250:
+            raise ValidationError("Bio can not be more than 250 characters")
+        return bio
+
+    def validate_password(self, password):
+        validate_password(password)
+        return password
+
+    def validate_username(self, username):
+        requested_user = self.context['request'].user
+        user_name = requested_user.username
+        if len(username) < 5 or len(username) > 30:
+            raise ValidationError("Username must be between 5 and 30 characters long")
+        if username.isdigit():
+            raise ValidationError("This username is entirely numeric.")
+        if User.objects.filter(username__iexact=username).exclude(username=user_name).exists():
+            raise ValidationError("This username is already exists")
+
+        return username
+
+    def validate(self, data):
+        print(data)
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        if password:
+            validate_password(password)
+            validate_password(confirm_password)
+        if password != confirm_password:
+            raise ValidationError("Your passwords don't match")
+
+        return data
+
+    def update(self, instance, validated_data):
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.username = validated_data.get('username', instance.username)
+        instance.password = validated_data.get('password', instance.password)
+        instance.bio = validated_data.get('bio', instance.bio)
+        instance.sex = validated_data.get('sex', instance.sex)
+
+        if validated_data.get('password'):
+            instance.set_password(validated_data.get('password'))
+
+        if instance.auth_status == CODE_VERIFIED:
+            user = self.context['request'].user
+            user.auth_status = DONE
+            user.save()
+        instance.save()
+        return instance

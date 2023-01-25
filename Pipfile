@@ -10,6 +10,7 @@ djangorestframework-simplejwt = "*"
 phonenumbers = "*"
 twilio = "*"
 python-decouple = "*"
+generics = "*"
 
 [dev-packages]
 

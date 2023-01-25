@@ -2,14 +2,14 @@ from datetime import datetime
 
 from rest_framework import permissions
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import CreateAPIView
+from rest_framework.generics import CreateAPIView, UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from shared.utils import send_email, send_phone_notification
-from .serializers import SignUpSerializer
-from .models import User, CODE_VERIFIED, INFORMATION_FILLED, DONE, VIA_EMAIL, VIA_PHONE
+from .serializers import SignUpSerializer, ChangeUserInformationSerializer
+from .models import User, CODE_VERIFIED, DONE, VIA_EMAIL, VIA_PHONE
 
 
 class CreateUserView(CreateAPIView):
@@ -43,7 +43,7 @@ class VerifyApiView(APIView):
             }
             raise ValidationError(data)
         verifies.update(is_confirmed=True)
-        if user.auth_status not in (INFORMATION_FILLED, DONE):
+        if user.auth_status not in DONE:
             user.auth_status = CODE_VERIFIED
             user.save()
         return True
@@ -84,6 +84,22 @@ class GetNewVerification(APIView):
             raise ValidationError(data)
 
 
+class ChangeUserView(UpdateAPIView):
+    permission_classes = (IsAuthenticated, )
+    serializer_class = ChangeUserInformationSerializer
+    http_method_names = ['patch', 'put']
 
+    def get_object(self):
+        return self.request.user
+
+    def partial_update(self, request, *args, **kwargs):
+        super(ChangeUserView, self).partial_update(request, *args, **kwargs)
+
+        return Response(
+            data={
+                "detail": "Updated successfully",
+                "auth_status": self.request.user.auth_status,
+            }, status=200
+        )
 
 

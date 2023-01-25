@@ -25,10 +25,9 @@ MALE, FEMALE = (
     "female"
 )
 
-NEW, CODE_VERIFIED, INFORMATION_FILLED, DONE = (
+NEW, CODE_VERIFIED, DONE = (
     "NEW",
     "CODE_VERIFIED",
-    "INFORMATTION_FILLED",
     "DONE"
 )
 
@@ -78,7 +77,6 @@ class User(AbstractUser, BaseModel):
     AUTH_STATUS = (
         (NEW, NEW),
         (CODE_VERIFIED, CODE_VERIFIED),
-        (INFORMATION_FILLED, INFORMATION_FILLED),
         (DONE, DONE)
     )
     SEX_CHOICES = (

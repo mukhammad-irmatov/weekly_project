@@ -3,7 +3,7 @@ from .models import User, UserConfirmation
 
 
 class UserModel(admin.ModelAdmin):
-    list_display = ("id", )
+    list_display = ("username", "first_name")
 
 
 class UserConfirmationAdmin(admin.ModelAdmin):
