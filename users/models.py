@@ -86,10 +86,10 @@ class User(AbstractUser, BaseModel):
     user_roles = models.CharField(max_length=31, choices=USER_ROLES, default=ORDINARY_USER)
     auth_type = models.CharField(max_length=31, choices=AUTH_TYPE_CHOICES, default=VIA_USERNAME)
     auth_status = models.CharField(max_length=31, choices=AUTH_STATUS, default=NEW)
-    sex = models.CharField(max_length=20, choices=SEX_CHOICES, null=True)
+    sex = models.CharField(max_length=20, choices=SEX_CHOICES, null=True, blank=True)
     email = models.EmailField(null=True, unique=True)
-    phone_number = models.CharField(max_length=12, null=True, unique=True, validators=[_validate_phone])
-    bio = models.CharField(max_length=250, null=True)
+    phone_number = models.CharField(max_length=12, null=True, blank=True, unique=True, validators=[_validate_phone])
+    bio = models.CharField(max_length=250, null=True, blank=True)
 
     objects = UserManager()
 

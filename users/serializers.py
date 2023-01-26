@@ -1,14 +1,93 @@
 from abc import ABC
 
-import generics as generics
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
+from rest_framework import exceptions
 from django.contrib.auth.password_validation import validate_password
 from django.db.models import Q
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.generics import get_object_or_404
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import AccessToken
 
-from demo_project.utility import check_email_or_phone
+from demo_project.utility import check_email_or_phone, check_user_type
 from shared.utils import phone_parser, send_email, send_phone_notification
 from users.models import User, UserConfirmation, VIA_EMAIL, VIA_PHONE, CODE_VERIFIED, DONE, NEW
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    def __init__(self, *args, **kwargs):
+        super(MyTokenObtainPairSerializer, self).__init__(*args, **kwargs)
+        self.fields['userinput'] = serializers.CharField(required=False)
+        self.fields['username'] = serializers.CharField(read_only=True, required=False)
+
+    def auth_validate(self, attrs):
+        print(attrs)
+        user_input = attrs.get('userinput')
+        print(user_input)
+        if check_user_type(user_input) == "username":
+            username = attrs.get('userinput')
+        elif check_user_type(user_input) == "email":
+            user = self.get_user(email__iexact=user_input)
+            username = user.username
+        elif check_user_type(user_input) == "phone":
+            user = self.get_user(phone_number=user_input)
+            username = user.username
+        else:
+            data = {
+                'success': False,
+                'message': "You must send username or email or phone_number"
+            }
+            return ValidationError(data)
+        authentication_kwargs = {
+            self.username_field: username,
+            'password': attrs['password']
+        }
+        print(authentication_kwargs)
+        current_user = User.objects.filter(username__iexact=username).first()
+        if current_user.auth_status != DONE:
+            raise ValidationError({"message": "You didn't complete your authentication process. Auth_status error"})
+        user = authenticate(**authentication_kwargs)
+        if user is not None:
+            self.user = user
+        else:
+            raise ValidationError(
+                {"password": "Sorry, login or password you entered is incorrect. Please check and try again."}
+            )
+
+    def validate(self, attrs):
+        self.auth_validate(attrs)
+        if self.user.auth_status != DONE:
+            raise PermissionDenied("You can't access to the program")
+        data = self.user.tokens()
+        data['auth_status'] = self.user.auth_status
+        return data
+
+    def get_user(self, **kwargs):
+        users = User.objects.filter(**kwargs)
+        if not users.exists():
+            raise exceptions.AuthenticationFailed(
+                self.error_messages['no_active_account'],
+                "no_active_account",
+            )
+        return users.first()
+
+
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        access_token_instance = AccessToken(data['access'])
+        user_id = access_token_instance['user_id']
+        user = get_object_or_404(User, id=user_id)
+        update_last_login(None, user)
+        return data
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
 
 
 class SignUpSerializer(serializers.ModelSerializer):
